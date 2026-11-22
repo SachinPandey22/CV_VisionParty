@@ -1,0 +1,15 @@
+[project]
+name = "vision-party"
+version = "0.1.0"
+description = "Webcam party game driven by pose estimation and object detection (CS 4337)."
+requires-python = ">=3.10,<3.13"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

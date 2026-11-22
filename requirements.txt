@@ -1,0 +1,8 @@
+# Python 3.11 (MediaPipe has no wheels for 3.13+)
+mediapipe==0.10.21
+opencv-python==4.10.0.84
+numpy<2
+pytest==8.3.4
+# Added on Day 4:
+# ultralytics
+# pyttsx3
