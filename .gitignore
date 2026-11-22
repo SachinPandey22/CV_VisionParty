@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+*.pt
+results/raw/
+.DS_Store
+~$*.docx
+
+# Course material and local notes (not part of the submission)
+Rubrics*.pdf
+ComVision_original_backup.docx
+CLAUDE.md
+.claude/
+docs/PLAN.md
