@@ -8,37 +8,13 @@ import argparse
 import time
 
 import cv2
-import numpy as np
 
 from .actions import detect_actions
 from .capture import Camera, mirror, player_regions
-from .pose import CONNECTIONS, JOINTS, Pose, PoseEstimator, joint_angles
+from .pose import PoseEstimator
+from .ui import PLAYER_COLORS, draw_skeleton
 
-PLAYER_COLORS = [(255, 170, 60), (60, 200, 255)]   # BGR: blue-ish P1, orange P2
 ON, OFF = (80, 220, 80), (150, 150, 150)
-
-
-def to_display(pose: Pose, width: int) -> np.ndarray:
-    """Raw-frame pixel coords -> mirrored display coords."""
-    pts = pose.points.copy()
-    pts[:, 0] = width - 1 - pts[:, 0]
-    return pts.astype(int)
-
-
-def draw_skeleton(img, pose: Pose, color, show_angles: bool) -> None:
-    pts = to_display(pose, img.shape[1])
-    for a, b in CONNECTIONS:
-        if pose.visible(a, b):
-            cv2.line(img, tuple(pts[a]), tuple(pts[b]), color, 3, cv2.LINE_AA)
-    for i, p in enumerate(pts):
-        if pose.visible(i):
-            cv2.circle(img, tuple(p), 4, (255, 255, 255), -1, cv2.LINE_AA)
-    if show_angles:
-        for name, value in joint_angles(pose).items():
-            if value is not None:
-                vx = pts[JOINTS[name][1]]
-                cv2.putText(img, f"{value:.0f}", (vx[0] + 6, vx[1] - 6),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
 
 def draw_panel(img, x: int, label: str, color, actions: dict[str, bool]) -> None:
