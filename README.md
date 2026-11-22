@@ -4,7 +4,7 @@ A webcam party game where your body is the controller. Computer vision
 (MediaPipe Pose + YOLOv8n) recognizes poses and objects in real time and turns
 them into short Solo or Duo challenges. CS 4337 Introduction to Computer Vision.
 
-> Status: Day 1 — pose estimation, action rules and a live debug view.
+> Status: Day 2 — playable Reaction Battle in Solo and Duo, plus a live debug view.
 
 ## Setup
 
@@ -20,6 +20,16 @@ uv pip install --python .venv/bin/python -r requirements.txt -e .
 On macOS, the first run asks for camera permission for your terminal app.
 
 ## Run
+
+Play (5-round match):
+
+```bash
+.venv/bin/python -m vision_party                       # then press 1 (Solo) or 2 (Duo)
+.venv/bin/python -m vision_party --p1 Ann --p2 Bob     # custom player names
+```
+
+Keys: `1` Solo · `2` Duo · `M` back to menu · `R` play again (after a match) · `Q` / `Esc` quit.
+Options: `--rounds N`, `--camera N`.
 
 Debug view (skeleton, joint angles, detected actions, FPS):
 
@@ -59,6 +69,26 @@ Tests (no camera needed):
 
 All thresholds live in `src/vision_party/config.py`.
 
+### Match flow
+
+Each round goes **intro → 3-2-1 countdown → active → result**; after the last
+round a winner screen shows final scores. The engine (`engine.py`) is a pure
+state machine: it takes poses and the current time and never touches the
+camera or screen, which makes it testable without a webcam.
+
+### Reaction Battle
+
+The game calls a random action; the timer starts at "GO".
+
+- An action must hold for 3 consecutive frames to count (filters single-frame
+  noise). Reaction time is measured from the first of those frames.
+- A player already doing the action at "GO" must drop it first, so holding a
+  pose through the countdown doesn't win.
+- **Solo:** succeed before the 5 s timeout. **Duo:** first player wins; same
+  frame = tie.
+- Points: 100 + speed bonus of up to 50 (full bonus at ≤ 0.4 s, falling to 0 at
+  the timeout).
+
 ## Layout
 
 ```
@@ -67,6 +97,10 @@ src/vision_party/
   capture.py     webcam, mirroring, player regions (Solo / Duo split)
   pose.py        MediaPipe wrapper, Pose type, joint angles
   actions.py     rule-based actions
+  games/         one module per game, all sharing the Game interface (base.py)
+  engine.py      match state machine: rounds, phases, scores, announcements
+  ui.py          drawing: skeletons, HUD, menu, countdown, results, winner screen
+  main.py        game entry point (python -m vision_party)
   debug_view.py  live debug window
-tests/           action-rule tests on synthetic skeletons
+tests/           unit tests on synthetic skeletons (actions, Reaction Battle, engine)
 ```

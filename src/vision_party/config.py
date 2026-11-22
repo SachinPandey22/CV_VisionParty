@@ -32,3 +32,21 @@ ONE_LEG_ANKLE_GAP = 0.30
 T_POSE_ELBOW_ANGLE = 150.0
 T_POSE_WRIST_HEIGHT_TOL = 0.30
 T_POSE_SPREAD = 2.2           # wrist-to-wrist distance / torso length
+
+# --- Match flow (seconds) ---------------------------------------------------
+ROUNDS_PER_MATCH = 5
+INTRO_SECONDS = 2.0           # instruction shown (and later spoken) before countdown
+COUNTDOWN_SECONDS = 3         # "3, 2, 1"
+GO_FLASH_SECONDS = 0.6        # how long "GO!" stays on screen
+RESULT_SECONDS = 3.0
+
+# --- Scoring ----------------------------------------------------------------
+BASE_POINTS = 100
+SPEED_BONUS_MAX = 50
+
+# --- Reaction Battle --------------------------------------------------------
+REACTION_TIMEOUT = 5.0
+# An action must hold for this many consecutive frames to count, so a single
+# noisy frame can't win a round. Reaction time is taken from the first frame.
+REACTION_CONFIRM_FRAMES = 3
+REACTION_FAST = 0.4           # reaction time that earns the full speed bonus
