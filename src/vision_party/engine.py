@@ -40,6 +40,7 @@ class Match:
         self.games = games or DEFAULT_GAMES
         self.rng = rng or random.Random()
         self.scores = [0] * self.n_players
+        self.streaks = [0] * self.n_players  # rounds won in a row, per player
         self.round_index = -1                 # 0-based; -1 before the first round
         self.game: Game | None = None
         self.last_result: RoundResult | None = None
@@ -69,6 +70,14 @@ class Match:
         """Match winners by total score (several on a tie)."""
         best = max(self.scores)
         return [i for i, s in enumerate(self.scores) if s == best]
+
+    def leader(self) -> int | None:
+        """The player strictly ahead on points (wears the crown), else None."""
+        best = max(self.scores)
+        if best <= 0:
+            return None
+        w = self.winners()
+        return w[0] if len(w) == 1 else None
 
     def pop_announcements(self) -> list[str]:
         out, self.announcements = self.announcements, []
@@ -108,6 +117,18 @@ class Match:
             self.history.append(result)
             self._enter(Phase.RESULT, now)
             self.announcements.append(self.named(result.message))
+            self._update_streaks(result)
+
+    def _update_streaks(self, result: RoundResult) -> None:
+        """Count rounds won in a row and cheer when someone gets hot.
+        Streaks are for fun only; they don't change the score."""
+        for i in range(self.n_players):
+            self.streaks[i] = self.streaks[i] + 1 if i in result.winners else 0
+            n = self.streaks[i]
+            if n == config.STREAK_ON_FIRE:
+                self.announcements.append(f"{self.names[i]} is on fire!")
+            elif n > config.STREAK_ON_FIRE:
+                self.announcements.append(f"{n} in a row for {self.names[i]}!")
 
     def _next_round(self, now: float) -> None:
         self.round_index += 1
