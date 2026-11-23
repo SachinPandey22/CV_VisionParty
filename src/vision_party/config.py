@@ -56,6 +56,8 @@ REACTION_FAST = 0.4           # reaction time that earns the full speed bonus
 RATING_PERFECT = 0.6
 RATING_GREAT = 1.0
 RATING_GOOD = 2.0          # slower than this but still in time = "OK"
+# Pose Battle rates accuracy instead: % needed for PERFECT, GREAT, GOOD.
+ACCURACY_RATINGS = (95, 88, 81)
 
 # Rounds won in a row before a player is "on fire".
 STREAK_ON_FIRE = 3
@@ -67,3 +69,20 @@ CONFETTI_MAX = 700         # cap so the frame rate never suffers
 # Best-moment photos: how many recent frames to keep. A round ends a few
 # frames after the reaction is confirmed, so a short buffer is enough.
 MOMENT_BUFFER_FRAMES = 10
+
+# --- Hold Challenge ---------------------------------------------------------
+HOLD_TARGET = 6.0          # holding this long earns full points
+HOLD_TIME_LIMIT = 10.0     # round length (seconds after GO)
+# Losing the pose for up to this long doesn't break the hold, so a single
+# missed detection or a wobble doesn't end it.
+HOLD_DROPOUT = 0.3
+
+# --- Pose similarity / Pose Battle -----------------------------------------
+# A joint scores 100% when its angle matches the target exactly, falling
+# linearly to 0% at this many degrees off.
+SIM_MAX_DIFF = 60.0
+SIM_MIN_JOINTS = 6         # need at least this many of the 8 joints visible
+POSE_MATCH_THRESHOLD = 75  # % similarity that counts as "matching"
+POSE_CONFIRM_FRAMES = 5    # must match this many frames in a row
+POSE_TIME_LIMIT = 8.0
+POSE_ACCURACY_MAX = 50     # extra points for accuracy above the threshold
