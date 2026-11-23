@@ -25,6 +25,7 @@ class RoundResult:
     points: list[int]              # points earned this round, per player
     message: str                   # headline, e.g. "P1 wins!"
     details: list[str] = field(default_factory=list)  # one line per player
+    times: list[float | None] = field(default_factory=list)  # reaction time per player, if any
 
 
 class Game(ABC):

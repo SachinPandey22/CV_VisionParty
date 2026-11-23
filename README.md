@@ -29,7 +29,7 @@ Play (5-round match):
 ```
 
 Keys: `1` Solo · `2` Duo · `M` back to menu · `R` play again (after a match) · `Q` / `Esc` quit.
-Options: `--rounds N`, `--camera N`.
+Options: `--rounds N`, `--camera N`, `--save-moments` (save each player's fastest-reaction photo to `moments/`).
 
 Debug view (skeleton, joint angles, detected actions, FPS):
 
@@ -89,6 +89,23 @@ The game calls a random action; the timer starts at "GO".
 - Points: 100 + speed bonus of up to 50 (full bonus at ≤ 0.4 s, falling to 0 at
   the timeout).
 
+### Party extras
+
+Small touches that make a match feel like a party. None of them change the score.
+
+- **Ratings:** after each round, a pop-up rates every player who reacted:
+  PERFECT! (≤ 0.6 s), GREAT! (≤ 1.0 s), GOOD (≤ 2.0 s) or OK.
+- **Streaks:** "2 in a row", then "ON FIRE x3" for rounds won back to back,
+  with a spoken "Ann is on fire!".
+- **Party hats and a crown:** every player wears a party hat anchored to the
+  eye and ear landmarks, so it follows the head and tilts with it. In Duo the
+  player ahead on points wears a crown; in Solo you earn it by getting on fire.
+- **Confetti:** bursts over the round winner and rains on the game-over screen.
+- **Best-moment photos:** the game keeps the frame from each player's fastest
+  reaction and shows it on the game-over screen.
+
+Thresholds are in the "Fun extras" section of `config.py`.
+
 ## Layout
 
 ```
@@ -100,7 +117,9 @@ src/vision_party/
   games/         one module per game, all sharing the Game interface (base.py)
   engine.py      match state machine: rounds, phases, scores, announcements
   ui.py          drawing: skeletons, HUD, menu, countdown, results, winner screen
+  fun.py         ratings, streak labels, best-moment photo picking (pure, tested)
+  effects.py     party hats, crown, confetti
   main.py        game entry point (python -m vision_party)
   debug_view.py  live debug window
-tests/           unit tests on synthetic skeletons (actions, Reaction Battle, engine)
+tests/           unit tests on synthetic skeletons (actions, Reaction Battle, engine, extras)
 ```
