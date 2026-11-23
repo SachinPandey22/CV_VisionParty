@@ -50,3 +50,20 @@ REACTION_TIMEOUT = 5.0
 # noisy frame can't win a round. Reaction time is taken from the first frame.
 REACTION_CONFIRM_FRAMES = 3
 REACTION_FAST = 0.4           # reaction time that earns the full speed bonus
+
+# --- Fun extras -------------------------------------------------------------
+# Reaction-time ratings shown after a round (seconds, upper bound for each).
+RATING_PERFECT = 0.6
+RATING_GREAT = 1.0
+RATING_GOOD = 2.0          # slower than this but still in time = "OK"
+
+# Rounds won in a row before a player is "on fire".
+STREAK_ON_FIRE = 3
+
+# Confetti
+CONFETTI_BURST = 140       # particles per burst
+CONFETTI_MAX = 700         # cap so the frame rate never suffers
+
+# Best-moment photos: how many recent frames to keep. A round ends a few
+# frames after the reaction is confirmed, so a short buffer is enough.
+MOMENT_BUFFER_FRAMES = 10

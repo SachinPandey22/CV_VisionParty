@@ -3,6 +3,7 @@
 import cv2
 import numpy as np
 
+from . import config, fun
 from .engine import Match, Phase
 from .pose import CONNECTIONS, JOINTS, Pose, joint_angles
 
@@ -10,6 +11,9 @@ FONT = cv2.FONT_HERSHEY_DUPLEX
 WHITE, BLACK = (255, 255, 255), (0, 0, 0)
 GREEN, RED, YELLOW = (90, 220, 90), (70, 70, 230), (60, 220, 255)
 PLAYER_COLORS = [(255, 170, 60), (60, 200, 255)]   # BGR: P1 blue, P2 orange
+ORANGE = (40, 140, 255)
+# One color per rating level: PERFECT, GREAT, GOOD, OK.
+RATING_COLORS = [(60, 220, 255), (90, 220, 90), (255, 200, 80), (200, 200, 200)]
 
 
 # --- primitives -------------------------------------------------------------
@@ -68,7 +72,8 @@ def draw_menu(img) -> None:
     center_text(img, "Stand back so your whole body is in view", w // 2, h // 2 + 70, 0.7)
 
 
-def draw_match(img, match: Match, poses: list[Pose | None], now: float) -> None:
+def draw_match(img, match: Match, poses: list[Pose | None], now: float,
+               moments=None) -> None:
     h, w = img.shape[:2]
     game = match.game
 
@@ -82,6 +87,10 @@ def draw_match(img, match: Match, poses: list[Pose | None], now: float) -> None:
         if poses[i] is None:
             label += "  (not visible)"
         text(img, label, (x, y), 0.8, PLAYER_COLORS[i])
+        badge = fun.streak_label(match.streaks[i])
+        if badge:
+            hot = match.streaks[i] >= config.STREAK_ON_FIRE
+            text(img, badge, (x, y + 32), 0.7, ORANGE if hot else WHITE)
 
     phase = match.phase
     if phase is Phase.INTRO:
@@ -101,11 +110,27 @@ def draw_match(img, match: Match, poses: list[Pose | None], now: float) -> None:
         _banner(img, match.named(res.message), color)
         _player_lines(img, match, [
             f"{d}  +{p}" if p else d for d, p in zip(res.details, res.points)])
+        _ratings(img, match, res, match.phase_elapsed(now))
     elif phase is Phase.FINISHED:
-        draw_winner(img, match)
+        draw_winner(img, match, moments)
 
 
-def draw_winner(img, match: Match) -> None:
+def _ratings(img, match: Match, res, t: float) -> None:
+    """Big PERFECT! / GREAT! / GOOD / OK under each player who reacted.
+    It pops in large and settles to its normal size in the first 0.25 s."""
+    h, w = img.shape[:2]
+    pop = 1.0 + 0.8 * max(0.0, 1.0 - t / 0.25)
+    for i, seconds in enumerate(res.times):
+        r = fun.rating(seconds)
+        if r is None:
+            continue
+        label, level = r
+        cx = w // 2 if match.n_players == 1 else (w // 4 if i == 0 else 3 * w // 4)
+        center_text(img, label, cx, h // 2 + 110, 1.6 * pop, RATING_COLORS[level],
+                    max(3, int(4 * pop)))
+
+
+def draw_winner(img, match: Match, moments=None) -> None:
     h, w = img.shape[:2]
     shade(img, 0, 0, w, h, 0.6)
     center_text(img, "GAME OVER", w // 2, h // 2 - 120, 2.0, YELLOW, 4)
@@ -116,7 +141,38 @@ def draw_winner(img, match: Match) -> None:
     for i, name in enumerate(match.names):
         center_text(img, f"{name}: {match.scores[i]} pts", w // 2, h // 2 + 30 + 50 * i,
                     1.1, PLAYER_COLORS[i])
-    center_text(img, "R  Play again      M  Menu      Q  Quit", w // 2, h - 60, 0.8)
+    if moments is not None:
+        _moment_photos(img, match, moments)
+    center_text(img, "R  Play again      M  Menu      Q  Quit", w // 2, h - 25, 0.8)
+
+
+def _moment_photos(img, match: Match, moments) -> None:
+    """Each player's fastest-reaction photo, in a row near the bottom."""
+    h, w = img.shape[:2]
+    shots = [(i, b) for i, b in enumerate(moments.best) if b is not None]
+    if not shots:
+        return
+    top = h // 2 + 30 + 50 * match.n_players
+    box_h = h - 60 - top
+    if box_h < 60:
+        return
+    thumbs = []
+    for i, (secs, photo) in shots:
+        scale = box_h / photo.shape[0]
+        thumbs.append((i, secs, cv2.resize(photo, (int(photo.shape[1] * scale), box_h))))
+    gap = 30
+    total = sum(t.shape[1] for _, _, t in thumbs) + gap * (len(thumbs) - 1)
+    x = max(0, (w - total) // 2)
+    for i, secs, t in thumbs:
+        tw = min(t.shape[1], w - x)
+        if tw <= 0:
+            break
+        img[top:top + box_h, x:x + tw] = t[:, :tw]
+        cv2.rectangle(img, (x, top), (x + tw - 1, top + box_h - 1), PLAYER_COLORS[i], 4)
+        shade(img, x, top + box_h - 52, x + tw, top + box_h, 0.5)
+        text(img, match.names[i], (x + 8, top + box_h - 30), 0.55, PLAYER_COLORS[i], 1)
+        text(img, f"fastest {secs:.2f}s", (x + 8, top + box_h - 9), 0.55, WHITE, 1)
+        x += tw + gap
 
 
 def _banner(img, s: str, color, small: bool = False) -> None:

@@ -74,7 +74,7 @@ class ReactionBattle(Game):
         valid = [t for t in times if t is not None]
         if not valid:
             msg = "Too slow!" if self.n_players == 1 else "Nobody made it!"
-            return RoundResult([], points, msg, details)
+            return RoundResult([], points, msg, details, times)
 
         best = min(valid)
         # Players confirmed in the same frame share the win.
@@ -87,7 +87,7 @@ class ReactionBattle(Game):
             msg = f"P{winners[0] + 1} wins! {best:.2f}s"
         else:
             msg = f"Tie! {best:.2f}s"
-        return RoundResult(winners, points, msg, details)
+        return RoundResult(winners, points, msg, details, times)
 
     def status(self, now: float) -> list[str]:
         out = []
