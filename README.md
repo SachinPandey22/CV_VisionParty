@@ -4,7 +4,7 @@ A webcam party game where your body is the controller. Computer vision
 (MediaPipe Pose + YOLOv8n) recognizes poses and objects in real time and turns
 them into short Solo or Duo challenges. CS 4337 Introduction to Computer Vision.
 
-> Status: Day 2 — playable Reaction Battle in Solo and Duo, plus a live debug view.
+> Status: Day 3 — Reaction Battle, Hold Challenge and Pose Battle in Solo and Duo, party extras, a live debug view and a pose-capture tool.
 
 ## Setup
 
@@ -39,6 +39,17 @@ Debug view (skeleton, joint angles, detected actions, FPS):
 ```
 
 Keys: `d` toggle Solo/Duo · `a` toggle angle labels · `q` / `Esc` quit.
+
+Record the Pose Battle target poses (strike a pose, press 1-5, hold still):
+
+```bash
+.venv/bin/python -m vision_party.capture_poses
+```
+
+The live match % against every target is shown while you pose. Poses are saved
+to `src/vision_party/targets.json` (commit it to share them). The repo ships
+with 5 starter poses (Star, Warrior, Tree, Muscle, Superhero) built from limb
+directions; re-record them with a real person for the best results.
 
 Tests (no camera needed):
 
@@ -89,6 +100,34 @@ The game calls a random action; the timer starts at "GO".
 - Points: 100 + speed bonus of up to 50 (full bonus at ≤ 0.4 s, falling to 0 at
   the timeout).
 
+### Hold Challenge
+
+The game calls a pose to hold (both hands up, squat, one leg, T-pose).
+
+- The hold timer starts the first time the pose is seen after "GO".
+- **Dropout tolerance:** losing the pose for under 0.3 s (a missed detection
+  or a wobble) is forgiven; a longer gap ends the hold.
+- Holding 6 s is a full success. Round length 10 s.
+- **Solo:** points scale with the hold (150 for the full 6 s). **Duo:** the
+  longer hold wins (within 0.1 s = tie).
+
+### Pose Battle
+
+Copy the target pose shown in the panel at the top right.
+
+- **Similarity:** the 8 joint angles (elbows, shoulders, hips, knees) are
+  compared with the target's. Each joint scores 100% when it matches and falls
+  linearly to 0% at 60° off; the pose score is the average over the joints
+  visible in both. Using angles makes the score independent of the player's
+  position, distance from the camera and height. At least 6 joints must be
+  visible.
+- A player matches at ≥ 75% for 5 frames in a row; the time is taken from the
+  first of those frames.
+- Points: 100 + up to 50 speed bonus + up to 50 accuracy bonus (75% → 0,
+  100% → 50). **Solo:** match before the 8 s timeout. **Duo:** first to match wins.
+- The result pop-up rates accuracy: PERFECT! (≥ 95%), GREAT! (≥ 88%),
+  GOOD (≥ 81%), OK.
+
 ### Party extras
 
 Small touches that make a match feel like a party. None of them change the score.
@@ -114,12 +153,16 @@ src/vision_party/
   capture.py     webcam, mirroring, player regions (Solo / Duo split)
   pose.py        MediaPipe wrapper, Pose type, joint angles
   actions.py     rule-based actions
-  games/         one module per game, all sharing the Game interface (base.py)
+  similarity.py  joint-angle pose similarity, target poses (load/save)
+  targets.json   the 5 Pose Battle target poses
+  games/         one module per game, all sharing the Game interface (base.py):
+                 reaction.py, hold.py, pose_battle.py
   engine.py      match state machine: rounds, phases, scores, announcements
   ui.py          drawing: skeletons, HUD, menu, countdown, results, winner screen
   fun.py         ratings, streak labels, best-moment photo picking (pure, tested)
   effects.py     party hats, crown, confetti
   main.py        game entry point (python -m vision_party)
   debug_view.py  live debug window
-tests/           unit tests on synthetic skeletons (actions, Reaction Battle, engine, extras)
+  capture_poses.py  record target poses from the webcam
+tests/           unit tests on synthetic skeletons (actions, all three games, similarity, engine, extras)
 ```

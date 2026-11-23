@@ -26,6 +26,7 @@ class RoundResult:
     message: str                   # headline, e.g. "P1 wins!"
     details: list[str] = field(default_factory=list)  # one line per player
     times: list[float | None] = field(default_factory=list)  # reaction time per player, if any
+    accuracy: list[float | None] = field(default_factory=list)  # pose match % per player, if any
 
 
 class Game(ABC):

@@ -6,6 +6,7 @@ import numpy as np
 from . import config, fun
 from .engine import Match, Phase
 from .pose import CONNECTIONS, JOINTS, Pose, joint_angles
+from .similarity import TargetPose
 
 FONT = cv2.FONT_HERSHEY_DUPLEX
 WHITE, BLACK = (255, 255, 255), (0, 0, 0)
@@ -114,14 +115,22 @@ def draw_match(img, match: Match, poses: list[Pose | None], now: float,
     elif phase is Phase.FINISHED:
         draw_winner(img, match, moments)
 
+    # Pose Battle: show the pose to copy (drawn last so nothing covers it).
+    target = getattr(game, "target", None)
+    if isinstance(target, TargetPose) and phase in (Phase.INTRO, Phase.COUNTDOWN, Phase.ACTIVE):
+        draw_reference(img, target)
+
 
 def _ratings(img, match: Match, res, t: float) -> None:
     """Big PERFECT! / GREAT! / GOOD / OK under each player who reacted.
     It pops in large and settles to its normal size in the first 0.25 s."""
     h, w = img.shape[:2]
     pop = 1.0 + 0.8 * max(0.0, 1.0 - t / 0.25)
-    for i, seconds in enumerate(res.times):
-        r = fun.rating(seconds)
+    for i in range(match.n_players):
+        if res.accuracy:                       # Pose Battle: rate the accuracy
+            r = fun.accuracy_rating(res.accuracy[i])
+        else:                                  # otherwise rate reaction time
+            r = fun.rating(res.times[i] if i < len(res.times) else None)
         if r is None:
             continue
         label, level = r
@@ -173,6 +182,36 @@ def _moment_photos(img, match: Match, moments) -> None:
         text(img, match.names[i], (x + 8, top + box_h - 30), 0.55, PLAYER_COLORS[i], 1)
         text(img, f"fastest {secs:.2f}s", (x + 8, top + box_h - 9), 0.55, WHITE, 1)
         x += tw + gap
+
+
+# Bones of the reference stick figure (landmark id pairs).
+_REF_BONES = [(11, 12), (11, 13), (13, 15), (12, 14), (14, 16), (11, 23), (12, 24),
+              (23, 24), (23, 25), (25, 27), (24, 26), (26, 28)]
+
+
+def draw_reference(img, target, box_w: int = 230, box_h: int = 300) -> None:
+    """The target pose as a stick figure in a panel at the top right.
+    Drawn mirrored, so it looks like the player's own mirror image."""
+    h, w = img.shape[:2]
+    x0, y0 = w - box_w - 15, 210          # below the instruction banner
+    shade(img, x0, y0, x0 + box_w, y0 + box_h, 0.65)
+    cv2.rectangle(img, (x0, y0), (x0 + box_w, y0 + box_h), YELLOW, 2)
+    center_text(img, f"Copy: {target.name}", x0 + box_w // 2, y0 + 30, 0.7, YELLOW, 2)
+
+    pts = {k: np.array([-v[0], v[1]], dtype=np.float32) for k, v in target.points.items()}
+    allp = np.array(list(pts.values()))
+    lo, hi = allp.min(axis=0), allp.max(axis=0)
+    area_top, area_h = y0 + 50, box_h - 65
+    scale = min((box_w - 40) / max(hi[0] - lo[0], 1e-3), area_h / max(hi[1] - lo[1], 1e-3))
+    cx = x0 + box_w / 2 - (lo[0] + hi[0]) / 2 * scale
+    cy = area_top + area_h / 2 - (lo[1] + hi[1]) / 2 * scale
+    px = {k: (int(cx + p[0] * scale), int(cy + p[1] * scale)) for k, p in pts.items()}
+    for a, b in _REF_BONES:
+        if a in px and b in px:
+            cv2.line(img, px[a], px[b], WHITE, 4, cv2.LINE_AA)
+    if 0 in px and 11 in px and 12 in px:
+        head_r = max(6, int(0.18 * scale))
+        cv2.circle(img, px[0], head_r, WHITE, 3, cv2.LINE_AA)
 
 
 def _banner(img, s: str, color, small: bool = False) -> None:
