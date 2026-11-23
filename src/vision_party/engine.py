@@ -13,12 +13,12 @@ from enum import Enum, auto
 from typing import Callable
 
 from . import config
-from .games import Game, ReactionBattle, RoundResult
+from .games import Game, HoldChallenge, PoseBattle, ReactionBattle, RoundResult
 from .pose import Pose
 
 GameFactory = Callable[[int, random.Random], Game]
 
-DEFAULT_GAMES: list[GameFactory] = [ReactionBattle]
+DEFAULT_GAMES: list[GameFactory] = [ReactionBattle, HoldChallenge, PoseBattle]
 
 
 class Phase(Enum):

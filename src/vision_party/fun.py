@@ -26,6 +26,16 @@ def rating(seconds: float | None) -> tuple[str, int] | None:
     return RATINGS[3], 3
 
 
+def accuracy_rating(percent: float | None) -> tuple[str, int] | None:
+    """Rating for how closely a pose was copied (Pose Battle)."""
+    if percent is None:
+        return None
+    for level, cutoff in enumerate(config.ACCURACY_RATINGS):
+        if percent >= cutoff:
+            return RATINGS[level], level
+    return RATINGS[3], 3
+
+
 def streak_label(n: int) -> str:
     """Short badge text for a win streak ('' when there is nothing to show)."""
     if n >= config.STREAK_ON_FIRE:
