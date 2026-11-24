@@ -175,6 +175,36 @@ Small touches that make a match feel like a party. None of them change the score
 
 Thresholds are in the "Fun extras" section of `config.py`.
 
+## Evaluation
+
+`python -m vision_party.evaluate` records the numbers for the report. Run it
+from the project folder with one person in front of the camera; it shows
+what to do for every trial (countdown, then GO).
+
+```bash
+python -m vision_party.evaluate all                                 # full run, ~25 min
+python -m vision_party.evaluate all --condition lowlight --quick    # poor-lighting rerun, ~10 min
+python -m vision_party.evaluate review-reaction                     # mark movement starts in the videos
+python -m vision_party.evaluate summary                             # build results/summary.md
+```
+
+| Test | What it measures |
+|---|---|
+| `actions` | 20 trials per action + 10 "stand still" trials, shuffled: accuracy, latency from GO, false triggers |
+| `fps` | full loop FPS (camera + pose + drawing) in Solo, Duo and Solo + YOLO, with pose / YOLO time per frame |
+| `reaction` | 10 "raise your right hand at GO" trials after a random wait; each is saved as a video with frame timestamps |
+| `review-reaction` | step through those videos (a/d, j/l) and press SPACE on the frame where the hand starts moving; the summary compares this with the detected reaction time |
+| `similarity` | each target pose 3 times, scored against all 5 targets: correct-pose vs. wrong-pose scores and how often each passes the 75% threshold |
+| `objects` | each object 5 times with the real Bring to Camera rules: success rate and time |
+
+Options: `--condition NAME` labels a run (e.g. `normal`, `lowlight`, `busy`),
+`--quick` uses fewer trials, `--trials N` overrides the count, `--camera N`.
+Q stops a test and keeps the trials recorded so far.
+
+Raw results (including the reaction videos) go to `results/raw/<condition>/`
+and are not committed. `summary` writes `results/summary.md` and one
+`*_summary.csv` per test; commit those for the report.
+
 ## Layout
 
 ```
@@ -196,6 +226,8 @@ src/vision_party/
   main.py        game entry point (python -m vision_party)
   debug_view.py  live debug window
   capture_poses.py  record target poses from the webcam
+  evaluate.py    evaluation command line (records trials, builds summary tables)
+  evaluation/    runner.py: the camera trials; metrics.py: scoring + tables (pure)
 tests/           unit tests on synthetic skeletons and detections (actions, all four games,
                  similarity, engine, timers, voice, extras)
 ```
