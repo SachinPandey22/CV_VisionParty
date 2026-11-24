@@ -44,6 +44,7 @@ class _Holder:
 
 class HoldChallenge(Game):
     title = "Hold Challenge"
+    shrinks = False   # the hold goal is fixed, so a shorter round would be unfair
 
     def __init__(self, n_players: int, rng: random.Random, action: str | None = None,
                  goal: float = config.HOLD_TARGET,

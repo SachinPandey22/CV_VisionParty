@@ -86,3 +86,25 @@ POSE_MATCH_THRESHOLD = 75  # % similarity that counts as "matching"
 POSE_CONFIRM_FRAMES = 5    # must match this many frames in a row
 POSE_TIME_LIMIT = 8.0
 POSE_ACCURACY_MAX = 50     # extra points for accuracy above the threshold
+
+# --- Objects / Bring to Camera (Solo only) ---------------------------------
+OBJECT_MODEL = "yolov8n.pt"   # pretrained on COCO, downloaded on first use
+OBJECT_CLASSES = ("bottle", "cup", "book", "cell phone")
+OBJECT_MIN_CONFIDENCE = 0.35
+OBJECT_IMG_SIZE = 480         # YOLO input size; smaller = faster
+# "Close to the camera" = the object's box covers at least this share of the
+# frame. Phones are small, so they get a lower bar.
+OBJECT_CLOSE_AREA = {"bottle": 0.08, "cup": 0.06, "book": 0.12, "cell phone": 0.04}
+OBJECT_CONFIRM_FRAMES = 3     # must stay close this many frames in a row
+OBJECT_TIME_LIMIT = 12.0
+OBJECT_FAST = 3.0             # bring it within this many seconds for the full bonus
+
+# --- Timers get shorter in later rounds -------------------------------------
+# Each round's time limit is scaled by (1 - SHRINK * round index), never
+# below MIN_SCALE. With 5 rounds: 100%, 92.5%, 85%, 77.5%, 70%.
+TIMER_SHRINK_PER_ROUND = 0.075
+TIMER_MIN_SCALE = 0.7
+
+# --- Voice ------------------------------------------------------------------
+VOICE_RATE = 190              # words per minute
+VOICE_MAX_QUEUE = 3           # older lines are dropped so speech never lags the game

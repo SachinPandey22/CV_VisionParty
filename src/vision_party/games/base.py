@@ -31,11 +31,16 @@ class RoundResult:
 
 class Game(ABC):
     title: str = "Game"
+    solo_only: bool = False      # engine skips this game in Duo
+    uses_objects: bool = False   # needs object detections via `observe` (see bring.py)
+    shrinks: bool = True         # time limit gets shorter in later rounds
 
     def __init__(self, n_players: int, rng: random.Random):
         self.n_players = n_players
         self.rng = rng
         self.start_time: float | None = None
+        # Set by the engine: later rounds get less time (see config.TIMER_*).
+        self.time_scale = 1.0
 
     @property
     @abstractmethod
@@ -53,8 +58,13 @@ class Game(ABC):
     def elapsed(self, now: float) -> float:
         return 0.0 if self.start_time is None else now - self.start_time
 
+    @property
+    def effective_limit(self) -> float:
+        """This round's actual time limit, after the per-round shrink."""
+        return self.time_limit * self.time_scale
+
     def time_left(self, now: float) -> float:
-        return max(0.0, self.time_limit - self.elapsed(now))
+        return max(0.0, self.effective_limit - self.elapsed(now))
 
     @abstractmethod
     def update(self, poses: list[Pose | None], now: float) -> bool:

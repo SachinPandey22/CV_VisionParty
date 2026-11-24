@@ -4,7 +4,7 @@ A webcam party game where your body is the controller. Computer vision
 (MediaPipe Pose + YOLOv8n) recognizes poses and objects in real time and turns
 them into short Solo or Duo challenges. CS 4337 Introduction to Computer Vision.
 
-> Status: Day 3 — Reaction Battle, Hold Challenge and Pose Battle in Solo and Duo, party extras, a live debug view and a pose-capture tool.
+> Status: Day 4 — four games (Reaction Battle, Hold Challenge, Pose Battle, and Solo-only Bring to Camera with YOLOv8n), spoken voice, shorter timers in later rounds, party extras, a debug view and a pose-capture tool.
 
 ## Setup
 
@@ -18,6 +18,11 @@ uv pip install --python .venv/bin/python -r requirements.txt -e .
 (Plain `python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt -e .` also works.)
 
 On macOS, the first run asks for camera permission for your terminal app.
+If the camera can't be opened, allow it in System Settings → Privacy &
+Security → Camera and restart the terminal.
+
+The first Solo match downloads the YOLOv8n weights (~6 MB, from Ultralytics'
+GitHub releases) into `models/`. After that, everything runs offline.
 
 ## Run
 
@@ -29,7 +34,7 @@ Play (5-round match):
 ```
 
 Keys: `1` Solo · `2` Duo · `M` back to menu · `R` play again (after a match) · `Q` / `Esc` quit.
-Options: `--rounds N`, `--camera N`, `--save-moments` (save each player's fastest-reaction photo to `moments/`).
+Options: `--rounds N`, `--camera N`, `--save-moments` (save each player's fastest-reaction photo to `moments/`), `--mute` (no voice), `--no-objects` (turn off YOLO and Bring to Camera).
 
 Debug view (skeleton, joint angles, detected actions, FPS):
 
@@ -87,6 +92,14 @@ round a winner screen shows final scores. The engine (`engine.py`) is a pure
 state machine: it takes poses and the current time and never touches the
 camera or screen, which makes it testable without a webcam.
 
+- **Voice:** every instruction, countdown number and result is spoken. On
+  macOS this uses the built-in `say` command; elsewhere pyttsx3. Speech runs on
+  a background thread so the video never pauses, and stale lines are dropped
+  so speech never falls behind the game.
+- **Shorter timers:** each round's time limit shrinks by 7.5% per round, down
+  to 70% (5 rounds: 100%, 92.5%, 85%, 77.5%, 70%). Hold Challenge is exempt
+  because its 6 s goal is fixed.
+
 ### Reaction Battle
 
 The game calls a random action; the timer starts at "GO".
@@ -128,6 +141,23 @@ Copy the target pose shown in the panel at the top right.
 - The result pop-up rates accuracy: PERFECT! (≥ 95%), GREAT! (≥ 88%),
   GOOD (≥ 81%), OK.
 
+### Bring to Camera (Solo only)
+
+The game names an object (bottle, cup, book or phone); bring it close to the
+camera.
+
+- **Detection:** a pretrained YOLOv8n (COCO classes, no training) finds the
+  object. "Close" means its bounding box covers at least a set share of the
+  frame: 8% for a bottle, 6% for a cup, 12% for a book, 4% for a phone.
+- It must stay close for 3 frames in a row; the time is taken from the first.
+- An object already close to the camera at "GO" must be moved away first.
+- Points: 100 + up to 50 speed bonus (full bonus within 3 s). Round length 12 s.
+- YOLO only runs during this game (from the countdown on), so the pose games
+  keep their full frame rate. The model loads on a background thread when a
+  Solo match starts. If it can't load, or `--no-objects` is set, the game is
+  left out and the other three still work.
+- Detection costs about 12 ms per 1280×720 frame on a laptop CPU.
+
 ### Party extras
 
 Small touches that make a match feel like a party. None of them change the score.
@@ -154,9 +184,11 @@ src/vision_party/
   pose.py        MediaPipe wrapper, Pose type, joint angles
   actions.py     rule-based actions
   similarity.py  joint-angle pose similarity, target poses (load/save)
+  objects.py     YOLOv8n object detector (lazy, background loading)
+  voice.py       non-blocking text-to-speech
   targets.json   the 5 Pose Battle target poses
   games/         one module per game, all sharing the Game interface (base.py):
-                 reaction.py, hold.py, pose_battle.py
+                 reaction.py, hold.py, pose_battle.py, bring.py
   engine.py      match state machine: rounds, phases, scores, announcements
   ui.py          drawing: skeletons, HUD, menu, countdown, results, winner screen
   fun.py         ratings, streak labels, best-moment photo picking (pure, tested)
@@ -164,5 +196,6 @@ src/vision_party/
   main.py        game entry point (python -m vision_party)
   debug_view.py  live debug window
   capture_poses.py  record target poses from the webcam
-tests/           unit tests on synthetic skeletons (actions, all three games, similarity, engine, extras)
+tests/           unit tests on synthetic skeletons and detections (actions, all four games,
+                 similarity, engine, timers, voice, extras)
 ```

@@ -86,7 +86,7 @@ class PoseBattle(Game):
         winners = [i for i, t in enumerate(times) if t is not None and t == first]
         for i in winners:
             points[i] = (config.BASE_POINTS
-                         + speed_bonus(first, config.REACTION_FAST * 2, self._limit)
+                         + speed_bonus(first, config.REACTION_FAST * 2, self.effective_limit)
                          + self._accuracy_bonus(self.players[i].best))
         accuracy = [c.best if c.time is not None else None for c in self.players]
         name = self.target.name

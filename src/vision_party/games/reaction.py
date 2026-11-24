@@ -80,7 +80,7 @@ class ReactionBattle(Game):
         # Players confirmed in the same frame share the win.
         winners = [i for i, t in enumerate(times) if t is not None and t == best]
         for i in winners:
-            points[i] = config.BASE_POINTS + speed_bonus(best, config.REACTION_FAST, self._timeout)
+            points[i] = config.BASE_POINTS + speed_bonus(best, config.REACTION_FAST, self.effective_limit)
         if self.n_players == 1:
             msg = f"Nice! {best:.2f}s"
         elif len(winners) == 1:

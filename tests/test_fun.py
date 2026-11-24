@@ -198,7 +198,8 @@ def test_app_runs_full_match_with_effects(monkeypatch):
     import vision_party.engine as engine
     monkeypatch.setattr(engine, "DEFAULT_GAMES",
                         [lambda n, rng: ReactionBattle(n, rng, action="RIGHT_HAND_UP")])
-    args = types.SimpleNamespace(p1="Ann", p2="Bob", rounds=1, camera=0, save_moments=False)
+    args = types.SimpleNamespace(p1="Ann", p2="Bob", rounds=1, camera=0, save_moments=False,
+                                 mute=True, no_objects=True)
     app = app_mod.App(args)
     frame = np.zeros((720, 1280, 3), np.uint8)
     app.frame(frame, -1)

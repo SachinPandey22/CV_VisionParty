@@ -59,6 +59,22 @@ def draw_skeleton(img, pose: Pose, color, show_angles: bool = False) -> None:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1, cv2.LINE_AA)
 
 
+def draw_object_box(img, game) -> None:
+    """Bring to Camera: box around the target object, green once it's close."""
+    box = getattr(game, "box", None)
+    if box is None:
+        return
+    w = img.shape[1]
+    x0, y0, x1, y1 = box
+    x0, x1 = w - 1 - x1, w - 1 - x0          # raw -> mirrored display coords
+    close = game.closeness >= 1.0
+    color = GREEN if close else YELLOW
+    cv2.rectangle(img, (x0, y0), (x1, y1), color, 3)
+    # Label under the box: above it would sit behind the prompt banner.
+    label_y = min(img.shape[0] - 30, y1 + 30)
+    text(img, f"{game.target} {min(100, int(game.closeness * 100))}%", (x0, label_y), 0.7, color)
+
+
 def draw_divider(img) -> None:
     h, w = img.shape[:2]
     cv2.line(img, (w // 2, 0), (w // 2, h), WHITE, 2)
@@ -82,11 +98,15 @@ def draw_match(img, match: Match, poses: list[Pose | None], now: float,
     shade(img, 0, 0, w, 60)
     text(img, f"Round {match.round_index + 1}/{match.rounds}  -  {game.title}", (20, 40), 0.8)
     for i, name in enumerate(match.names):
-        x = 20 + i * (w // 2) if match.n_players == 2 else w - 260
         y = 95
         label = f"{name}: {match.scores[i]}"
         if poses[i] is None:
             label += "  (not visible)"
+        if match.n_players == 2:
+            x = 20 + i * (w // 2)
+        else:   # right-aligned, so longer labels never run off the screen
+            (tw, _), _ = cv2.getTextSize(label, FONT, 0.8, 2)
+            x = w - 20 - tw
         text(img, label, (x, y), 0.8, PLAYER_COLORS[i])
         badge = fun.streak_label(match.streaks[i])
         if badge:
@@ -103,7 +123,7 @@ def draw_match(img, match: Match, poses: list[Pose | None], now: float,
         if match.show_go(now):
             center_text(img, "GO!", w // 2, h // 2 + 60, 4.0, GREEN, 8)
         _banner(img, game.prompt, YELLOW, small=True)
-        _timer_bar(img, game.time_left(now) / game.time_limit)
+        _timer_bar(img, game.time_left(now) / game.effective_limit)
         _player_lines(img, match, game.status(now))
     elif phase is Phase.RESULT and match.last_result:
         res = match.last_result

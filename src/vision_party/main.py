@@ -1,7 +1,7 @@
 """Vision Party game entry point.
 
 Run:  python -m vision_party [--p1 NAME] [--p2 NAME] [--rounds N] [--camera 0]
-                             [--save-moments]
+                             [--save-moments] [--mute] [--no-objects]
 Menu: 1 = Solo, 2 = Duo, Q / Esc = quit
 After a match: R = play again, M = menu
 """
@@ -15,9 +15,12 @@ import cv2
 from . import config
 from .capture import Camera, mirror, player_regions
 from .effects import Confetti, draw_props
+from . import engine
 from .engine import Match, Phase
 from .fun import Moments, display_region
+from .objects import ObjectDetector
 from .pose import PoseEstimator
+from .voice import Voice
 from . import ui
 
 WINDOW = "Vision Party"
@@ -45,13 +48,25 @@ class App:
         self.moments: Moments | None = None
         self._last_phase: Phase | None = None
         self._last_now: float | None = None
+        self.voice = Voice(enabled=not args.mute)
+        self.detector = None if args.no_objects else ObjectDetector()
+
+    def games(self) -> list:
+        """Games for the next match. Object games are dropped if YOLO is
+        turned off or failed to load (the 'cut line' fallback)."""
+        games = list(engine.DEFAULT_GAMES)
+        if self.detector is None or self.detector.error:
+            games = [g for g in games if not getattr(g, "uses_objects", False)]
+        return games
 
     def start_match(self, duo: bool) -> None:
         self.close_estimators()
         self.duo = duo
         self.estimators = [PoseEstimator(r) for r in player_regions(duo)]
         names = [self.args.p1, self.args.p2] if duo else [self.args.p1]
-        self.match = Match(names, time.perf_counter(), rounds=self.args.rounds)
+        if not duo and self.detector is not None:
+            self.detector.preload()    # background thread; ready long before it's needed
+        self.match = Match(names, time.perf_counter(), rounds=self.args.rounds, games=self.games())
         self.moments = Moments(len(names))
         self.confetti.clear()
         self._last_phase = None
@@ -82,9 +97,16 @@ class App:
 
         now = time.perf_counter()
         poses = [e.process(raw) for e in self.estimators]
+        game = self.match.game
+        if game.uses_objects:
+            # YOLO runs only in object rounds. It starts during the countdown
+            # so the game knows whether the object was already close at GO.
+            if self.match.phase in (Phase.COUNTDOWN, Phase.ACTIVE):
+                ready = self.detector is not None and self.detector.ready
+                game.observe(self.detector.detect(raw) if ready else None)
         self.match.update(poses, now)
         for text in self.match.pop_announcements():
-            print(f"[voice] {text}")      # replaced by text-to-speech on Day 4
+            self.voice.say(text)
 
         if self.duo:
             ui.draw_divider(view)
@@ -92,6 +114,8 @@ class App:
             if pose is not None:
                 ui.draw_skeleton(view, pose, ui.PLAYER_COLORS[i])
         draw_props(view, poses, ui.PLAYER_COLORS, crown_for(self.match))
+        if self.match.game.uses_objects and self.match.phase is Phase.ACTIVE:
+            ui.draw_object_box(view, self.match.game)
         if self.match.phase is Phase.ACTIVE:
             # Photo buffer: skeleton and hats in, but no text overlays.
             self.moments.push(now, view.copy())
@@ -156,6 +180,9 @@ def main() -> None:
     parser.add_argument("--camera", type=int, default=config.CAMERA_INDEX)
     parser.add_argument("--save-moments", action="store_true",
                         help="save each player's fastest-reaction photo to moments/")
+    parser.add_argument("--mute", action="store_true", help="no spoken voice")
+    parser.add_argument("--no-objects", action="store_true",
+                        help="turn off YOLO and the Bring to Camera game")
     args = parser.parse_args()
 
     app = App(args)
@@ -169,6 +196,7 @@ def main() -> None:
             cv2.imshow(WINDOW, view)
             key = cv2.waitKey(1) & 0xFF
     app.close_estimators()
+    app.voice.close()
     cv2.destroyAllWindows()
 
 

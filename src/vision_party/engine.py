@@ -4,8 +4,9 @@
 
 The engine is a pure state machine: it never reads the camera, draws, or
 speaks. Callers pass in poses and the current time, then read its state to
-render. Text meant to be spoken is queued in `announcements` (voice is wired
-up on Day 4).
+render. Text meant to be spoken is queued in `announcements`; main.py hands
+it to the voice. Object games get their detections from main.py too (via
+`game.observe`), so the engine stays free of models and I/O.
 """
 
 import random
@@ -13,12 +14,12 @@ from enum import Enum, auto
 from typing import Callable
 
 from . import config
-from .games import Game, HoldChallenge, PoseBattle, ReactionBattle, RoundResult
+from .games import BringToCamera, Game, HoldChallenge, PoseBattle, ReactionBattle, RoundResult
 from .pose import Pose
 
 GameFactory = Callable[[int, random.Random], Game]
 
-DEFAULT_GAMES: list[GameFactory] = [ReactionBattle, HoldChallenge, PoseBattle]
+DEFAULT_GAMES: list[GameFactory] = [ReactionBattle, HoldChallenge, PoseBattle, BringToCamera]
 
 
 class Phase(Enum):
@@ -37,7 +38,11 @@ class Match:
         self.names = names
         self.n_players = len(names)
         self.rounds = rounds
-        self.games = games or DEFAULT_GAMES
+        # Solo-only games (Bring to Camera) are left out of Duo matches.
+        self.games = [g for g in (games or DEFAULT_GAMES)
+                      if self.n_players == 1 or not getattr(g, "solo_only", False)]
+        if not self.games:
+            raise ValueError("no games available for this number of players")
         self.rng = rng or random.Random()
         self.scores = [0] * self.n_players
         self.streaks = [0] * self.n_players  # rounds won in a row, per player
@@ -78,6 +83,11 @@ class Match:
             return None
         w = self.winners()
         return w[0] if len(w) == 1 else None
+
+    @staticmethod
+    def time_scale(round_index: int) -> float:
+        """Time-limit multiplier for a round: later rounds are shorter."""
+        return max(config.TIMER_MIN_SCALE, 1.0 - config.TIMER_SHRINK_PER_ROUND * round_index)
 
     def pop_announcements(self) -> list[str]:
         out, self.announcements = self.announcements, []
@@ -134,6 +144,8 @@ class Match:
         self.round_index += 1
         factory = self.rng.choice(self.games)
         self.game = factory(self.n_players, self.rng)
+        if self.game.shrinks:
+            self.game.time_scale = self.time_scale(self.round_index)
         self.last_result = None
         self._last_countdown_said = None
         self._enter(Phase.INTRO, now)
